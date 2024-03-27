@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <csapp.h>
+#include "csapp.h"
 /* Recommended max cache and object sizes */
 #define MAX_CACHE_SIZE 1049000
 #define MAX_OBJECT_SIZE 102400
@@ -12,39 +12,48 @@ typedef struct URLs {
     char port[MAXLINE];
     char path[MAXLINE];
 }URL;
-void sighandler(int sig)
-{
-    ;
-}
+void sighandler(int sig) {	;	}
 
 void doit(int fd);
 void parse_uri(char *uri, URL* head);
 void build_header(rio_t *rp, char* serverbuf, URL* headers); 
+//part2
+void *thread(void *vargp);
+
 int main(int argc, char **argv)
 {
-	int listenfd, connfd;
+	int listenfd;
 	socklen_t clientlen;
 	char hostname[MAXLINE], port[MAXLINE];
 	struct sockaddr_storage clientaddr;
 	
+	//part2
+	sem_t mutex;
+	int *connfdp;
+	pthread_t tid;
+	Sem_init(&mutex, 0, 1);
 	/* Check command line args */
 	if(argc != 2){
 		fprintf(stderr, "usage: %s <port>\n", argv[0]);
 		exit(1);
 	}
-	signal(SIGPIPE, sighandler);	//捕获SIGPIPE信号
+	//signal(SIGPIPE, sighandler);	//捕获SIGPIPE信号
 	listenfd = Open_listenfd(argv[1]);
 	while(1) {
 		clientlen = sizeof(clientaddr);
-		connfd = Accept(listenfd, (SA*) &clientaddr, &clientlen);
+		connfdp = Malloc(sizeof(int));
+		P(&mutex);
+		*connfdp = Accept(listenfd, (SA*) &clientaddr, &clientlen);
+		V(&mutex);
 		Getnameinfo((SA *) &clientaddr, clientlen, hostname, MAXLINE, port, MAXLINE, 0);
 		printf("Accepted connection from (%s, %s)\n", hostname, port); 
-		doit(connfd);
-		Close(connfd);
+		Pthread_create(&tid, NULL, thread, connfdp);
+
 	}
     //printf("%s", user_agent_hdr);
     return 0;
 }
+
 /* $end proxymain */
 
 /*
@@ -147,7 +156,15 @@ void build_header(rio_t *rp, char* serverbuf, URL* headers)
     return;
 }
 
-
+/* Thread routine */
+void *thread(void *vargp){
+	int connfd = *((int*)vargp);
+	Pthread_detach(Pthread_self());
+	Free(vargp);
+	doit(connfd);
+	Close(connfd);
+	return NULL;
+}
 
 
 

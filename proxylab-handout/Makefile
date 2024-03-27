@@ -5,7 +5,7 @@
 # build your proxy from sources.
 
 CC = gcc
-CFLAGS = -g -Wall -I/home/mao/cmu_lab/proxylab-handout
+CFLAGS = -g -Wall -I /home/mao/Desktop/cmu_lab/proxylab-handout
 LDFLAGS = -lpthread
 all: proxy
 
